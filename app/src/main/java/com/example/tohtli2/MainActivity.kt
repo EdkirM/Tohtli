@@ -1,6 +1,6 @@
 package com.example.tohtli2
 
-////////////////////////////////77
+// Importación de librerías necesarias para red, archivos y concurrencia
 import android.widget.TextView
 import kotlinx.coroutines.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -9,10 +9,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MultipartBody
 import java.io.File
 
-////////////////////////////////
-
-
-
+// Importación de librerías necesarias para permisos, grabación de audio, UI y navegación
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
@@ -36,14 +33,13 @@ import com.example.tohtli2.WhisperApiService
 import com.example.tohtli2.WhisperResponse
 import com.example.tohtli2.createWhisperService
 
-
-
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private var isRecording = false
-    private lateinit var audioThread: Thread
+    private var isRecording = false // Bandera para saber si se está grabando
+    private lateinit var audioThread: Thread // Hilo para grabar audio
 
+    // Configuración de parámetros para grabación de audio
     private val sampleRate = 44100
     private val audioSource = MediaRecorder.AudioSource.MIC
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -53,9 +49,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Inflar layout con ViewBinding
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Configuración de navegación con BottomNavigation
         val navView: BottomNavigationView = binding.navView
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
         val appBarConfiguration = AppBarConfiguration(
@@ -64,26 +62,24 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
-        // Permisos
+        // Solicitud de permisos de grabación y almacenamiento
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
             ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                 arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
         }
 
-        // Botón de grabación
+        // Botón para iniciar o detener grabación
         val recordButton: Button = findViewById(R.id.recordButton)
         recordButton.setOnClickListener {
             if (!isRecording) {
-                startRecording(recordButton)
+                startRecording(recordButton) // Comienza a grabar
             } else {
-                stopRecording(recordButton)
+                stopRecording(recordButton) // Detiene grabación
             }
         }
 
-
-        /////////////////////////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////
+        // Botón para transcribir el audio grabado
         val transcribeButton: Button = findViewById(R.id.transcribeButton)
         val transcriptionText: TextView = findViewById(R.id.transcriptionText)
 
@@ -95,14 +91,9 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "No se encontró el archivo .wav", Toast.LENGTH_SHORT).show()
             }
         }
-
-        /////////////////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////////////////
     }
 
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-
+    // Función para enviar el archivo de audio al servicio Whisper y mostrar el texto transcrito
     private fun transcribirAudio(file: File, textView: TextView) {
         val service = createWhisperService()
 
@@ -129,10 +120,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-
-
+    // Función que inicia la grabación de audio
     @SuppressLint("MissingPermission")
     private fun startRecording(recordButton: Button) {
         isRecording = true
@@ -140,8 +128,8 @@ class MainActivity : AppCompatActivity() {
 
         audioThread = Thread {
             val audioRecord = AudioRecord(audioSource, sampleRate, channelConfig, audioFormat, bufferSize)
-            val pcmFile = File(getExternalFilesDir(null), "temp_audio.pcm")
-            val wavFile = File(getExternalFilesDir(null), "audio.wav")
+            val pcmFile = File(getExternalFilesDir(null), "temp_audio.pcm") // archivo crudo
+            val wavFile = File(getExternalFilesDir(null), "audio.wav") // archivo final con cabecera
             val data = ByteArray(bufferSize)
 
             audioRecord.startRecording()
@@ -155,7 +143,7 @@ class MainActivity : AppCompatActivity() {
             audioRecord.stop()
             audioRecord.release()
 
-            rawToWave(pcmFile, wavFile)
+            rawToWave(pcmFile, wavFile) // convertir PCM a WAV
             pcmFile.delete()
 
             runOnUiThread {
@@ -166,11 +154,13 @@ class MainActivity : AppCompatActivity() {
         audioThread.start()
     }
 
+    // Detiene la grabación
     private fun stopRecording(recordButton: Button) {
         isRecording = false
         recordButton.text = "Grabar Audio"
     }
 
+    // Convierte un archivo PCM crudo a formato WAV con cabecera válida
     private fun rawToWave(rawFile: File, waveFile: File) {
         val rawData = rawFile.readBytes()
         val totalAudioLen = rawData.size
@@ -179,17 +169,19 @@ class MainActivity : AppCompatActivity() {
 
         FileOutputStream(waveFile).use { out ->
             val header = ByteArray(44)
+
+            // Cabecera RIFF/WAVE para archivo WAV
             header[0] = 'R'.code.toByte(); header[1] = 'I'.code.toByte(); header[2] = 'F'.code.toByte(); header[3] = 'F'.code.toByte()
             writeInt(header, 4, totalDataLen)
             header[8] = 'W'.code.toByte(); header[9] = 'A'.code.toByte(); header[10] = 'V'.code.toByte(); header[11] = 'E'.code.toByte()
             header[12] = 'f'.code.toByte(); header[13] = 'm'.code.toByte(); header[14] = 't'.code.toByte(); header[15] = ' '.code.toByte()
-            writeInt(header, 16, 16)
-            writeShort(header, 20, 1.toShort())
-            writeShort(header, 22, 1.toShort())
+            writeInt(header, 16, 16) // Subchunk1Size
+            writeShort(header, 20, 1.toShort()) // AudioFormat (1 = PCM)
+            writeShort(header, 22, 1.toShort()) // NumChannels
             writeInt(header, 24, sampleRate)
             writeInt(header, 28, byteRate)
-            writeShort(header, 32, 2.toShort())
-            writeShort(header, 34, 16.toShort())
+            writeShort(header, 32, 2.toShort()) // BlockAlign
+            writeShort(header, 34, 16.toShort()) // BitsPerSample
             header[36] = 'd'.code.toByte(); header[37] = 'a'.code.toByte(); header[38] = 't'.code.toByte(); header[39] = 'a'.code.toByte()
             writeInt(header, 40, totalAudioLen)
 
@@ -198,6 +190,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Escribe un valor entero en la cabecera del WAV en formato little-endian
     private fun writeInt(header: ByteArray, offset: Int, value: Int) {
         header[offset] = (value and 0xff).toByte()
         header[offset + 1] = ((value shr 8) and 0xff).toByte()
@@ -205,6 +198,7 @@ class MainActivity : AppCompatActivity() {
         header[offset + 3] = ((value shr 24) and 0xff).toByte()
     }
 
+    // Escribe un valor corto (short) en la cabecera del WAV
     private fun writeShort(header: ByteArray, offset: Int, value: Short) {
         header[offset] = (value.toInt() and 0xff).toByte()
         header[offset + 1] = ((value.toInt() shr 8) and 0xff).toByte()
