@@ -1,3 +1,18 @@
+import java.util.Properties
+
+// Create a new Properties object
+val localProperties = Properties()
+// Get the root project's directory
+val localPropertiesFile = rootProject.file("local.properties")
+
+// Check if the local.properties file exists
+if (localPropertiesFile.exists()) {
+    // Load the properties from the file
+    localPropertiesFile.inputStream().use { input ->
+        localProperties.load(input)
+    }
+}
+
 plugins {
     // Plugin para apps Android
     id("com.android.application")
@@ -23,6 +38,13 @@ android {
 
         // Instrumentación para tests
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Definir la variable BuildConfig
+        buildConfigField(
+            "String",
+            "OPENAI_API_KEY",
+            "\"${localProperties.getProperty("OPENAI_API_KEY")}\""
+        )
     }
 
     buildTypes {
@@ -53,6 +75,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
