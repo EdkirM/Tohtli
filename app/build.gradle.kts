@@ -9,7 +9,7 @@ android {
     // Nombre del paquete raíz del proyecto
     namespace = "com.example.tohtli2"
     // Versión de Android SDK utilizada para compilar
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         // ID de la aplicación
@@ -84,4 +84,19 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+
+    // Jetpack Compose
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.compose.ui:ui:1.6.3")
+    implementation("androidx.compose.ui:ui-tooling:1.6.3")
+    implementation("androidx.compose.foundation:foundation:1.6.3")
+    implementation("androidx.compose.material:material:1.6.3")
+    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+
+    // Navigation Compose
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // Integration with ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 }

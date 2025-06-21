@@ -18,7 +18,7 @@ class NotificationsFragment : Fragment() {
     // Propiedad pública que garantiza acceso no nulo al binding entre onCreateView y onDestroyView
     private val binding get() = _binding!!
 
-    // Método que se ejecuta para inflar el layout del fragmento
+    // Metodo que se ejecuta para inflar el layout del fragmento
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
