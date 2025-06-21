@@ -15,9 +15,7 @@ android {
         // ID de la aplicación
         applicationId = "com.example.tohtli2"
         // Mínima versión de Android requerida
-        minSdk = 34
-        // SDK objetivo
-        targetSdk = 34
+        minSdk = 26
         // Código de versión (para Play Store)
         versionCode = 1
         // Nombre de versión (para mostrar al usuario)
@@ -39,6 +37,7 @@ android {
         }
     }
 
+
     // Configuración para compatibilidad con Java 8
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -53,12 +52,17 @@ android {
     // Activa ViewBinding para acceso seguro a vistas
     buildFeatures {
         viewBinding = true
+        compose = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.11"
     }
 }
 
 dependencies {
     // Funciones de extensión para Android
-    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.core:core-ktx:1.16.0")
     // Compatibilidad con versiones anteriores de Android
     implementation("androidx.appcompat:appcompat:1.7.1")
     // Componentes de interfaz de usuario de Material Design
@@ -86,17 +90,17 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 
     // Jetpack Compose
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("androidx.compose.ui:ui:1.6.3")
-    implementation("androidx.compose.ui:ui-tooling:1.6.3")
-    implementation("androidx.compose.foundation:foundation:1.6.3")
-    implementation("androidx.compose.material:material:1.6.3")
-    implementation("androidx.compose.material3:material3:1.2.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.compose.ui:ui:1.8.3")
+    implementation("androidx.compose.ui:ui-tooling:1.8.3")
+    implementation("androidx.compose.foundation:foundation:1.8.3")
+    implementation("androidx.compose.material:material:1.8.3")
+    implementation("androidx.compose.material3:material3:1.3.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
 
     // Navigation Compose
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.navigation:navigation-compose:2.9.0")
 
     // Integration with ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
 }
