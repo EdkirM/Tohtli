@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Context
 import android.media.MediaRecorder
-import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -16,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.example.tohtli2.AudioStorageHelper
 import com.example.tohtli2.WhisperApiService
 import com.example.tohtli2.createWhisperService
 import kotlinx.coroutines.launch
@@ -28,6 +28,7 @@ import java.io.IOException
 
 @Composable
 fun RecordScreen(navController: NavController) {
+
     val context = LocalContext.current
     val isRecording = remember { mutableStateOf(false) }
     val audioFile = remember { mutableStateOf<File?>(null) }
@@ -36,7 +37,17 @@ fun RecordScreen(navController: NavController) {
     val transcriptionResult = remember { mutableStateOf<String?>(null) }
     val isLoading = remember { mutableStateOf(false) }
     val errorMessage = remember { mutableStateOf<String?>(null) }
-    val mediaRecorder = remember { MediaRecorder() }
+    // Cambiamos la inicialización del MediaRecorder
+    val mediaRecorder = remember {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+    }
+
+
 
     // Verificación de permisos
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -62,20 +73,9 @@ fun RecordScreen(navController: NavController) {
         }
     }
 
-    // Función para crear archivo de audio
+    // Función para crear archivo de audio usando AudioStorageHelper
     fun createAudioFile(context: Context): File {
-        return try {
-            val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
-            File.createTempFile(
-                "audio_${System.currentTimeMillis()}",
-                ".mp4",
-                storageDir
-            ).apply {
-                createNewFile()
-            }
-        } catch (e: Exception) {
-            throw IOException("No se pudo crear el archivo de audio", e)
-        }
+        return AudioStorageHelper.createNewAudioFile(context)
     }
 
     // Mostrar diálogos
@@ -153,7 +153,10 @@ fun RecordScreen(navController: NavController) {
 
                             val response = whisperService.transcribeAudio(audioPart, model)
                             if (response.isSuccessful) {
-                                transcriptionResult.value = response.body()?.text ?: "Sin texto"
+                                val transcriptionText = response.body()?.text ?: "Sin texto"
+                                transcriptionResult.value = transcriptionText
+                                // Guardar la transcripción junto al audio
+                                AudioStorageHelper.saveTranscription(file, transcriptionText)
                             } else {
                                 transcriptionResult.value = "Error: ${response.code()}"
                             }
@@ -184,10 +187,18 @@ fun RecordScreen(navController: NavController) {
 private fun startRecording(mediaRecorder: MediaRecorder, outputFile: File) {
     try {
         mediaRecorder.apply {
+            // Configuración común para todas las versiones
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setOutputFile(outputFile.absolutePath)
+
+            // Para versiones recientes (API 31+)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                setAudioSamplingRate(44100)
+                setAudioEncodingBitRate(192000)
+            }
+
             prepare()
             start()
         }
@@ -199,9 +210,15 @@ private fun startRecording(mediaRecorder: MediaRecorder, outputFile: File) {
 private fun stopRecording(mediaRecorder: MediaRecorder) {
     try {
         mediaRecorder.stop()
+        // Para versiones recientes (API 31+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            mediaRecorder.reset()
+            mediaRecorder.release()
+        } else {
+            @Suppress("DEPRECATION")
+            mediaRecorder.reset()
+        }
     } catch (e: IllegalStateException) {
         throw IllegalStateException("Error al detener la grabación", e)
-    } finally {
-        mediaRecorder.reset()
     }
 }
