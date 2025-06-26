@@ -1,27 +1,45 @@
 package com.example.tohtli2
 
-// Importaciones necesarias para manejar solicitudes HTTP con Retrofit
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
-import retrofit2.http.Multipart
-import retrofit2.http.POST
-import retrofit2.http.Part
+import retrofit2.http.*
 
-// Interfaz que define el servicio para consumir la API de Whisper usando Retrofit
 interface WhisperApiService {
-
-    // Anotación para indicar que se trata de una solicitud multipart/form-data
     @Multipart
-    @POST("v1/audio/transcriptions") // Ruta del endpoint de transcripción
+    @POST("v1/audio/transcriptions")
     suspend fun transcribeAudio(
-        // Parte del archivo de audio, enviado como multipart
         @Part file: MultipartBody.Part,
-        // Parte que indica el modelo a usar (en este caso "whisper-1")
-        @Part("model") model: RequestBody
-    ): Response<WhisperResponse> // Devuelve una respuesta Retrofit con un objeto WhisperResponse
+        @Part("model") model: RequestBody,
+        @Part("language") language: RequestBody? = null
+    ): Response<WhisperResponse>
+
+    @POST("v1/chat/completions")
+    suspend fun translateText(
+        @Body request: TranslationRequest
+    ): Response<TranslationResponse>
 }
 
-// Clase de datos que representa la respuesta JSON de la API de Whisper
-// Se espera que tenga un campo "text" con la transcripción
-data class WhisperResponse(val text: String)
+data class WhisperResponse(
+    val text: String,
+    val language: String? = null
+)
+
+data class TranslationRequest(
+    val model: String = "gpt-3.5-turbo",
+    val messages: List<Message>,
+    val temperature: Double = 0.7
+)
+
+data class Message(
+    val role: String = "user",
+    val content: String
+)
+
+data class TranslationResponse(
+    val choices: List<Choice>
+)
+
+data class Choice(
+    val message: Message
+)

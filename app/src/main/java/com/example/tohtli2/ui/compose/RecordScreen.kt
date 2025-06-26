@@ -7,6 +7,9 @@ import android.media.MediaRecorder
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,18 +29,16 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.IOException
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordScreen(navController: NavController) {
-
     val context = LocalContext.current
     val isRecording = remember { mutableStateOf(false) }
     val audioFile = remember { mutableStateOf<File?>(null) }
     val whisperService = remember { createWhisperService() }
     val scope = rememberCoroutineScope()
-    val transcriptionResult = remember { mutableStateOf<String?>(null) }
     val isLoading = remember { mutableStateOf(false) }
     val errorMessage = remember { mutableStateOf<String?>(null) }
-    // Cambiamos la inicialización del MediaRecorder
     val mediaRecorder = remember {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             MediaRecorder(context)
@@ -47,9 +48,20 @@ fun RecordScreen(navController: NavController) {
         }
     }
 
+    // Estados para traducción
+    val targetLanguage = remember { mutableStateOf("es") }
+    val availableLanguages = listOf(
+        "es" to "Español",
+        "en" to "Inglés",
+        "de" to "Alemán",
+        "fr" to "Francés",
+        "it" to "Italiano",
+        "zh" to "Chino Mandarín",
+        "ja" to "Japonés",
+        "ko" to "Coreano"
+    )
+    val expandedLanguageMenu = remember { mutableStateOf(false) }
 
-
-    // Verificación de permisos
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -58,7 +70,6 @@ fun RecordScreen(navController: NavController) {
         }
     }
 
-    // Función para verificar y solicitar permisos
     fun checkAndRequestPermissions() {
         when {
             ContextCompat.checkSelfPermission(
@@ -73,26 +84,8 @@ fun RecordScreen(navController: NavController) {
         }
     }
 
-    // Función para crear archivo de audio usando AudioStorageHelper
     fun createAudioFile(context: Context): File {
         return AudioStorageHelper.createNewAudioFile(context)
-    }
-
-    // Mostrar diálogos
-    if (transcriptionResult.value != null) {
-        AlertDialog(
-            onDismissRequest = { transcriptionResult.value = null },
-            title = { Text("Transcripción") },
-            text = { Text(transcriptionResult.value ?: "") },
-            confirmButton = {
-                Button(onClick = {
-                    transcriptionResult.value = null
-                    navController.navigate("results")
-                }) {
-                    Text("OK")
-                }
-            }
-        )
     }
 
     if (errorMessage.value != null) {
@@ -114,15 +107,17 @@ fun RecordScreen(navController: NavController) {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Pantalla de Grabación", modifier = Modifier.padding(16.dp))
+        Text("Pantalla de Grabación", style = MaterialTheme.typography.headlineSmall)
 
         if (isLoading.value) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
-                checkAndRequestPermissions() // Verificar permisos antes de grabar
+                checkAndRequestPermissions()
                 try {
                     isRecording.value = !isRecording.value
                     if (isRecording.value) {
@@ -136,10 +131,50 @@ fun RecordScreen(navController: NavController) {
                     isRecording.value = false
                 }
             },
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
         ) {
             Text(if (isRecording.value) "Detener Grabación" else "Iniciar Grabación")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Selector de idioma para traducción
+        ExposedDropdownMenuBox(
+            expanded = expandedLanguageMenu.value,
+            onExpandedChange = { expandedLanguageMenu.value = !expandedLanguageMenu.value }
+        ) {
+            TextField(
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
+                readOnly = true,
+                value = availableLanguages.find { it.first == targetLanguage.value }?.second ?: "",
+                onValueChange = {},
+                label = { Text("Idioma de Traducción") },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLanguageMenu.value)
+                }
+            )
+
+            ExposedDropdownMenu(
+                expanded = expandedLanguageMenu.value,
+                onDismissRequest = { expandedLanguageMenu.value = false }
+            ) {
+                availableLanguages.forEach { (code, name) ->
+                    DropdownMenuItem(
+                        text = { Text(name) },
+                        onClick = {
+                            targetLanguage.value = code
+                            expandedLanguageMenu.value = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
@@ -147,37 +182,70 @@ fun RecordScreen(navController: NavController) {
                     isLoading.value = true
                     scope.launch {
                         try {
-                            val requestFile = file.asRequestBody("audio/wav".toMediaTypeOrNull())
+                            // 1. Transcribir el audio
+                            val requestFile = file.asRequestBody("audio/mpeg".toMediaTypeOrNull())
                             val audioPart = MultipartBody.Part.createFormData("file", file.name, requestFile)
                             val model = "whisper-1".toRequestBody("text/plain".toMediaTypeOrNull())
 
-                            val response = whisperService.transcribeAudio(audioPart, model)
-                            if (response.isSuccessful) {
-                                val transcriptionText = response.body()?.text ?: "Sin texto"
-                                transcriptionResult.value = transcriptionText
-                                // Guardar la transcripción junto al audio
+                            val transcriptionResponse = whisperService.transcribeAudio(audioPart, model)
+
+                            if (transcriptionResponse.isSuccessful) {
+                                val transcriptionText = transcriptionResponse.body()?.text ?: "Sin texto"
+
+                                // Guardar la transcripción
                                 AudioStorageHelper.saveTranscription(file, transcriptionText)
+
+                                // 2. Traducir automáticamente al idioma seleccionado
+                                val targetLanguageName = availableLanguages.find { it.first == targetLanguage.value }?.second ?: ""
+                                val translationRequest = com.example.tohtli2.TranslationRequest(
+                                    messages = listOf(
+                                        com.example.tohtli2.Message(
+                                            content = "Traduce el siguiente texto a $targetLanguageName manteniendo el mismo formato: $transcriptionText"
+                                        )
+                                    )
+                                )
+
+                                val translationResponse = whisperService.translateText(translationRequest)
+
+                                if (translationResponse.isSuccessful) {
+                                    val translatedText = translationResponse.body()?.choices?.firstOrNull()?.message?.content ?: "Sin traducción"
+
+                                    // Guardar la traducción
+                                    AudioStorageHelper.saveTranslation(file, targetLanguage.value, translatedText)
+
+                                    // Navegar a resultados
+                                    navController.navigate("results")
+                                } else {
+                                    errorMessage.value = "Error en traducción: ${translationResponse.code()}"
+                                }
                             } else {
-                                transcriptionResult.value = "Error: ${response.code()}"
+                                errorMessage.value = "Error en transcripción: ${transcriptionResponse.code()}"
                             }
                         } catch (e: Exception) {
-                            transcriptionResult.value = "Error: ${e.message}"
+                            errorMessage.value = "Error: ${e.message}"
                         } finally {
                             isLoading.value = false
                         }
                     }
                 } ?: run {
-                    transcriptionResult.value = "No hay audio grabado"
+                    errorMessage.value = "No hay audio grabado"
                 }
             },
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            enabled = audioFile.value != null && !isRecording.value && !isLoading.value
         ) {
-            Text("Transcribir Audio")
+            Text("Transcribir y Traducir")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = { navController.popBackStack() },
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
         ) {
             Text("Volver")
         }
@@ -187,13 +255,11 @@ fun RecordScreen(navController: NavController) {
 private fun startRecording(mediaRecorder: MediaRecorder, outputFile: File) {
     try {
         mediaRecorder.apply {
-            // Configuración común para todas las versiones
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setOutputFile(outputFile.absolutePath)
 
-            // Para versiones recientes (API 31+)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 setAudioSamplingRate(44100)
                 setAudioEncodingBitRate(192000)
@@ -210,7 +276,6 @@ private fun startRecording(mediaRecorder: MediaRecorder, outputFile: File) {
 private fun stopRecording(mediaRecorder: MediaRecorder) {
     try {
         mediaRecorder.stop()
-        // Para versiones recientes (API 31+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             mediaRecorder.reset()
             mediaRecorder.release()
