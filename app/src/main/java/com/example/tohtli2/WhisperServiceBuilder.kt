@@ -16,8 +16,8 @@ fun createWhisperService(): WhisperApiService {
         // Interceptor para agregar el encabezado de autorización (API Key de OpenAI)
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
-                //.addHeader("Authorization", "Bearer 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") // ⚠️ Reemplaza con tu clave real
-                .addHeader("Authorization", "Bearer ${BuildConfig.OPENAI_API_KEY}")
+                .addHeader("Authorization", "Bearer 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") // ⚠️ Reemplaza con tu clave real
+                //.addHeader("Authorization", "Bearer ${BuildConfig.OPENAI_API_KEY}")
                 .build()
             chain.proceed(request)
         }
