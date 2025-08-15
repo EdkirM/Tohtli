@@ -24,3 +24,16 @@ Tohtli es una aplicación móvil innovadora que utiliza inteligencia artificial 
 Tohtli busca romper barreras de comunicación y democratizar el acceso a herramientas de IA, ofreciendo un servicio gratuito con opciones premium económicas, a diferencia de alternativas costosas como Otter.ai o Temi.
 
 ### Proyecto desarrollado por Omar Emiliano León Castro y Edkir Uriel Nava Méndez, bajo la supervisión del Prof. Daniel Sánchez Ruiz (IPN-Tlaxcala).
+
+
+## Descripción del problema
+El rápido desarrollo de sistemas de inteligencia artificial ha democratizado el acceso a tecnologías avanzadas de procesamiento de voz [6]. Sin embargo, persisten desafíos significativos en entornos académicos y profesionales donde la toma manual de notas reduce la capacidad de atención [2]. Además, en México existen aproximadamente 2.3 millones de personas con discapacidad auditiva [4] que requieren soluciones accesibles para la comunicación cotidiana.
+
+## Definición de la propuesta de valor
+✔Tohtli implementa un sistema integral que combina:
+✔Transcripción automática mediante Whisper API [5].
+✔Traducción simultánea a múltiples idiomas usando GPT-3.5-turbo.
+✔Almacenamiento local seguro de historiales.
+✔Interfaz optimizada para usuarios nuevos.
+
+Una aplicación de traducción a 8 idiomas sencilla y funcional.
